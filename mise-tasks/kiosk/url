@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Print the kiosk's saved dashboard URL, or save and open a new one: mise run kiosk:url <url>"
+set -euo pipefail
+exec scripts/set-kiosk-url.sh "$@"

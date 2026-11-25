@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+#MISE description="Read-only summary of the frame: identity, screen, kiosk, Home app, backlight, dimmer"
+set -euo pipefail
+source "$(dirname "$0")/../lib.sh"
+need_device
+echo "Frame:      $(sh_ getprop ro.product.model) ($(sh_ getprop ro.product.device)), Android $(sh_ getprop ro.build.version.release)"
+echo "Firmware:   $(sh_ getprop ro.build.display.id)"
+echo "Clock:      $(sh_ date)   up $(sh_ cat /proc/uptime | awk '{printf "%.1f h", $1/3600}')"
+echo "Screen:     $(sh_ dumpsys power | grep -m1 -o 'mWakefulness=[A-Za-z]*' | cut -d= -f2)"
+# grep -m1 stops reading early, which pipefail reports as a failure: test the text, not the status.
+wifi=$(sh_ dumpsys wifi | grep -m1 -o 'state: [A-Z_]*/[A-Z_]*' || true)
+echo "Wi-Fi:      ${wifi:-unknown}"
+echo "In front:   $(sh_ dumpsys window windows | grep -m1 mCurrentFocus | sed 's/.* u0 //; s/}$//')"
+ver=$(sh_ dumpsys package "$PKG" | grep -m1 -o 'versionName=[^ ]*' | cut -d= -f2 || true)
+echo "Kiosk:      ${ver:-not installed}"
+home=$(root_ "cat /data/system/users/0/package-restrictions.xml" 2>/dev/null \
+  | grep -o '<item name="[^"]*"[^>]*always="true"' | sed 's/<item name="\([^"]*\)".*/\1/' | head -1 || true)
+echo "Home:       ${home:-no saved default (the chooser may show at boot)}"
+sh_ 'for d in /sys/class/backlight/*; do [ -e "$d/actual_brightness" ] && echo "Backlight:  $(basename $d) $(cat $d/actual_brightness)/$(cat $d/max_brightness)"; done' || true
+echo "Android brightness setting: $(sh_ settings get system screen_brightness) (mode $(sh_ settings get system screen_brightness_mode))"
+[ -n "$ver" ] && dimmer_show
+echo "Disabled:   $(sh_ pm list packages -d | sed 's/^package://' | tr '\n' ' ')"
+port=$(sh_ getprop persist.adb.tcp.port)
+echo "Wi-Fi ADB:  ${port:-off}"

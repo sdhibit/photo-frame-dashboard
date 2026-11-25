@@ -1,5 +1,9 @@
-# Local toolchain for this checkout (not part of upstream).
+# Toolchain and helpers for this fork (not part of upstream). `mise tasks` lists everything.
 # First run:  mise install && mise run sdk
+# Frame tasks (kiosk:*, frame:*) live in mise-tasks/. With more than one device on ADB, put the
+# frame's serial (or <ip>:5555) in a git-ignored mise.local.toml:
+#   [env]
+#   ADB_SERIAL = "..."
 [tools]
 java = "temurin-17"   # dashboard/kiosk/build.sh expects JDK 17
 node = "26"           # dashboard/ (Vite 8, Wrangler)
@@ -24,3 +28,18 @@ description = "Build dashboard/kiosk/build/homehq.apk"
 dir = "dashboard"
 # build-tools 35.0.0: the version used on the sibling SKYZOO BMY-107 (34's d8 can crash on newer JDKs)
 run = 'BUILD_TOOLS="$ANDROID_HOME/build-tools/35.0.0" bash kiosk/build.sh'
+
+[tasks."dashboard:install"]
+description = "Install the dashboard's npm packages (exact versions from package-lock.json)"
+dir = "dashboard"
+run = "npm ci"
+
+[tasks."dashboard:dev"]
+description = "Run the dashboard locally with Vite (open the printed URL at 1280x800)"
+dir = "dashboard"
+run = "npm run dev"
+
+[tasks."dashboard:build"]
+description = "Build the dashboard into dashboard/dist"
+dir = "dashboard"
+run = "npm run build"

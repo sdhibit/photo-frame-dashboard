@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+#MISE description="Build Home HQ and install it on the frame (adb install -r keeps its settings), then open it"
+#MISE depends=["kiosk:build"]
+set -euo pipefail
+source "$(dirname "$0")/../lib.sh"
+need_device
+# Same signing key as the installed copy (~/.android/debug.keystore), or Android refuses the update.
+adb_ install -r dashboard/kiosk/build/homehq.apk
+sh_ input keyevent KEYCODE_WAKEUP >/dev/null
+sh_ am start -n "$ACTIVITY" >/dev/null
+echo "Installed and opened Home HQ $(sh_ dumpsys package "$PKG" | grep -m1 -o 'versionName=[^ ]*' | cut -d= -f2)"

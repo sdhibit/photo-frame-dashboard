@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+#MISE description="Fetch wesbos/photo-frame-dashboard (upstream), rebase this branch on it and run the kiosk tests"
+set -euo pipefail
+if [ -n "$(git status --porcelain)" ]; then
+  echo "Commit or stash your changes first." >&2
+  exit 1
+fi
+git remote get-url upstream >/dev/null 2>&1 || { echo "No 'upstream' remote (wesbos/photo-frame-dashboard)." >&2; exit 1; }
+git fetch upstream
+branch=$(git branch --show-current)
+behind=$(git rev-list --count HEAD..upstream/main)
+if [ "$behind" = 0 ]; then
+  echo "$branch already includes upstream/main."
+  exit 0
+fi
+echo "Upstream commits to take ($behind):"
+git log --oneline HEAD..upstream/main | head -30
+if ! git rebase upstream/main; then
+  echo "The rebase stopped on a conflict. Fix the files, git add them, git rebase --continue" >&2
+  echo "(or git rebase --abort to go back)." >&2
+  exit 1
+fi
+mise run kiosk:test
+echo
+echo "Rebased $branch onto upstream/main and the kiosk tests pass. To update the frame: mise run kiosk:install"
+echo "To update your fork: git push --force-with-lease"

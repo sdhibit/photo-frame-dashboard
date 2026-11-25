@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+#MISE description="Show the panel backlight; set it (0-max, temporary, root) or 'reset' it to Android's setting"
+set -euo pipefail
+source "$(dirname "$0")/../lib.sh"
+need_device
+dev=$(sh_ 'ls /sys/class/backlight' | head -1)
+[ -n "$dev" ] || { echo "No /sys/class/backlight device on this frame" >&2; exit 1; }
+p=/sys/class/backlight/$dev
+case "${1:-}" in
+  "")
+    echo "$dev: $(sh_ cat $p/actual_brightness) of $(sh_ cat $p/max_brightness)" \
+      "(Android setting $(sh_ settings get system screen_brightness))" ;;
+  reset)
+    v=$(sh_ settings get system screen_brightness)
+    [[ "$v" =~ ^[0-9]+$ ]] || { echo "Android's brightness setting is not a number: $v" >&2; exit 1; }
+    root_ "echo $v > $p/brightness"
+    echo "$dev set to Android's setting, $v" ;;
+  *)
+    [[ "$1" =~ ^[0-9]+$ ]] || { echo "Usage: mise run frame:backlight [<level>|reset]" >&2; exit 1; }
+    root_ "echo $1 > $p/brightness"
+    echo "$dev now $(sh_ cat $p/actual_brightness). Temporary: Android or the dimmer will set it again." ;;
+esac

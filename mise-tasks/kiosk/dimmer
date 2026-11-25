@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+#MISE description="Show the dimmer settings; 'on' / 'off'; or set options: mise run kiosk:dimmer --ei dim_after_min 5"
+set -euo pipefail
+source "$(dirname "$0")/../lib.sh"
+need_device
+case "${1:-}" in
+  "") dimmer_show; exit 0 ;;
+  on) set -- --ez dimmer true ;;
+  off) set -- --ez dimmer false ;;
+esac
+# The options go through adb shell as text: allow only plain flags and values (22:00-06:30, 10, true).
+for a in "$@"; do
+  if ! [[ "$a" =~ ^[A-Za-z0-9_:.-]+$ ]]; then
+    echo "Not a plain option or value: $a" >&2
+    echo "Options: --ez dimmer true|false  --ei dim_after_min N  --ei dim_level 0-255" >&2
+    echo "         --es night HH:MM-HH:MM|off  --ei night_after_min N  --ei night_level 0-255" >&2
+    exit 1
+  fi
+done
+sh_ am start -n "$ACTIVITY" "$@" >/dev/null
+sleep 1
+dimmer_show

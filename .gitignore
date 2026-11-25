@@ -23,3 +23,6 @@ scripts/si006-webview-overlay/build/
 
 # Locally compiled MI86 app_process helper; source only is published.
 /mi86-home-build/
+
+# mise: per-machine settings such as ADB_SERIAL (this fork).
+/mise.local.toml

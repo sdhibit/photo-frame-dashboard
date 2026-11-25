@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Follow the kiosk's log (HomeHQ tag); add -d to print what's there and stop"
+set -euo pipefail
+source "$(dirname "$0")/../lib.sh"
+need_device
+adb_ logcat -v time "$@" -s HomeHQ

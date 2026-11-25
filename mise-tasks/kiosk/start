@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+#MISE description="Wake the screen and bring Home HQ to the front (also turns remote debugging off)"
+set -euo pipefail
+source "$(dirname "$0")/../lib.sh"
+need_device
+sh_ input keyevent KEYCODE_WAKEUP >/dev/null
+sh_ am start -n "$ACTIVITY" >/dev/null
+echo "Home HQ in front: $(sh_ dumpsys window windows | grep -m1 mCurrentFocus | sed 's/.* u0 //; s/}$//')"

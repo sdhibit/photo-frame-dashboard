@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+#MISE description="Save a screenshot of the frame to diagnostics/screenshots/ (git-ignored)"
+set -euo pipefail
+source "$(dirname "$0")/../lib.sh"
+need_device
+out="diagnostics/screenshots/frame-$(date +%Y%m%d-%H%M%S).png"
+mkdir -p "$(dirname "$out")"
+# Black with the screen asleep. A dimmed backlight doesn't matter: this reads the picture, not the panel.
+adb_ exec-out screencap -p > "$out"
+echo "$out ($(stat -c %s "$out") bytes; screen $(sh_ dumpsys power | grep -m1 -o 'mWakefulness=[A-Za-z]*' | cut -d= -f2))"

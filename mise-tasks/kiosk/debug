@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+#MISE description="Turn on WebView remote debugging until the next normal launch (inspect from chrome://inspect)"
+set -euo pipefail
+source "$(dirname "$0")/../lib.sh"
+need_device
+sh_ am start -n "$ACTIVITY" --ez debug true >/dev/null
+echo "Remote debugging is ON. Open chrome://inspect in Chrome on this computer (USB) to inspect the page."
+echo "Any page shown in the kiosk can then be inspected over ADB. Turn it off with: mise run kiosk:start"
