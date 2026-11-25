@@ -164,7 +164,7 @@ Keep a working Settings route and the existing signing key when updating an inst
 
 ## Dimming and night (local patch, not upstream)
 
-This checkout's `local/dimmer` branch adds `Dimmer.java`/`DimPolicy.java`. Upstream keeps native
+This fork's `frame` branch adds `Dimmer.java`/`DimPolicy.java`. Upstream keeps native
 night or dim screens out of the shared kiosk (see the triage decisions, 2026-11-04), so this stays
 local. Off by default:
 

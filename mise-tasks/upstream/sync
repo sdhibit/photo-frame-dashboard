@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="Fetch wesbos/photo-frame-dashboard (upstream), rebase this branch on it and run the kiosk tests"
+#MISE description="Fetch wesbos/photo-frame-dashboard, fast-forward main (here and on your fork), rebase this branch on it, run the kiosk tests"
 set -euo pipefail
 if [ -n "$(git status --porcelain)" ]; then
   echo "Commit or stash your changes first." >&2
@@ -8,6 +8,23 @@ fi
 git remote get-url upstream >/dev/null 2>&1 || { echo "No 'upstream' remote (wesbos/photo-frame-dashboard)." >&2; exit 1; }
 git fetch upstream
 branch=$(git branch --show-current)
+
+# main is a plain mirror of upstream/main. Only ever fast-forward it: never rewrite it.
+if git merge-base --is-ancestor main upstream/main; then
+  if [ "$branch" = main ]; then git merge -q --ff-only upstream/main; else git branch -f main upstream/main; fi
+else
+  echo "Local main has commits upstream/main doesn't: left as is. Keep your own commits on a branch." >&2
+fi
+if git remote get-url origin >/dev/null 2>&1; then
+  # A normal push: GitHub refuses it if the fork's main ever moved away from upstream.
+  if git push -q origin upstream/main:refs/heads/main 2>/dev/null; then
+    echo "main (here and on origin) = upstream/main $(git rev-parse --short upstream/main)"
+  else
+    echo "Could not fast-forward origin's main to upstream/main (it may have its own commits)." >&2
+  fi
+fi
+[ "$branch" = main ] && exit 0
+
 behind=$(git rev-list --count HEAD..upstream/main)
 if [ "$behind" = 0 ]; then
   echo "$branch already includes upstream/main."
