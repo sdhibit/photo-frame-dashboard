@@ -67,6 +67,8 @@ import java.util.Map;
  * - Or keep the vendor Home app and open the kiosk after boot (--ez boot false undoes it; Android 10+
  *   also needs: adb shell appops set com.wesbos.homehq SYSTEM_ALERT_WINDOW allow):
  *     adb shell am start -n com.wesbos.homehq/.MainActivity --ez boot true
+ * - Local patch: dim after idle and a night backlight level (off by default; see Dimmer.java):
+ *     adb shell am start -n com.wesbos.homehq/.MainActivity --ez dimmer true
  * - Wi-Fi with a sign-in page (captive portal): when the dashboard can't load on Wi-Fi, the kiosk
  *   checks for one and shows it, so the terms can be accepted; then it returns to the dashboard.
  */
@@ -121,6 +123,7 @@ public class MainActivity extends Activity {
   private long lastTimeNudge = -TIME_NUDGE_MS;
   private LinearLayout portalBar;
   private TextView portalText;
+  private Dimmer dimmer; // local patch: idle dim + night backlight, see Dimmer.java
 
   private final Runnable retry = new Runnable() {
     @Override
@@ -227,6 +230,7 @@ public class MainActivity extends Activity {
           offline.setVisibility(View.GONE);
           handler.removeCallbacks(stall);
         }
+        if (dimmer != null) dimmer.pageLoaded(); // local patch: backlight state for the page
       }
 
       @Override
@@ -323,6 +327,8 @@ public class MainActivity extends Activity {
     menuPosition.setMargins(dp(12), dp(12), dp(12), dp(12));
     root.addView(menuButton, menuPosition);
     applyMenuButtonFlag(getIntent());
+    dimmer = new Dimmer(this, root, web); // adds the night cover on top of everything
+    dimmer.applyFlags(getIntent());
     setContentView(root);
 
     String url = urlFrom(getIntent());
@@ -337,6 +343,7 @@ public class MainActivity extends Activity {
   protected void onResume() {
     super.onResume();
     resumed = true;
+    if (dimmer != null) dimmer.resume();
     web.resumeTimers();
     web.onResume();
     NavigationService.setDashboardVisible(true);
@@ -354,6 +361,7 @@ public class MainActivity extends Activity {
   @Override
   protected void onPause() {
     resumed = false;
+    if (dimmer != null) dimmer.pause(); // back to Android's brightness for Settings and other apps
     cancelExit();
     // pauseTimers affects every WebView in this app process. Native retries need pausing too.
     web.onPause();
@@ -374,6 +382,7 @@ public class MainActivity extends Activity {
     applyBootFlag(intent);
     applyMenuButtonFlag(intent);
     applyBootanimFlag(intent);
+    if (dimmer != null) dimmer.applyFlags(intent);
     String url = urlFrom(intent);
     if (url != null) {
       closePortal();
@@ -808,6 +817,7 @@ public class MainActivity extends Activity {
   protected void onDestroy() {
     unregisterReceiver(networkChange);
     handler.removeCallbacksAndMessages(null);
+    if (dimmer != null) dimmer.destroy();
     if (web != null) web.destroy();
     super.onDestroy();
   }
@@ -919,6 +929,8 @@ public class MainActivity extends Activity {
   /** Watches for the two-finger exit hold; all touches still go to the page (after a stale-touch reset). */
   @Override
   public boolean dispatchTouchEvent(MotionEvent e) {
+    // A touch on a dimmed screen only wakes it (local patch, see Dimmer.java).
+    if (dimmer != null && dimmer.onTouch(e)) return true;
     switch (e.getActionMasked()) {
       case MotionEvent.ACTION_DOWN:
         // Android sends DOWN only when every earlier finger has lifted. If the page still holds a

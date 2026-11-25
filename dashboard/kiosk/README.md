@@ -162,6 +162,62 @@ Host regression checks cover late errors, probe completion and retry ordering. F
 captive-portal recovery on this revision, and other Android versions, remain untested on hardware.
 Keep a working Settings route and the existing signing key when updating an installed kiosk.
 
+## Dimming and night (local patch, not upstream)
+
+This checkout's `local/dimmer` branch adds `Dimmer.java`/`DimPolicy.java`. Upstream keeps native
+night or dim screens out of the shared kiosk (see the triage decisions, 2026-11-04), so this stays
+local. Off by default:
+
+```sh
+adb shell am start -n com.wesbos.homehq/.MainActivity --ez dimmer true \
+  --ei dim_after_min 10 --ei dim_level 10 \
+  --es night 22:00-06:30 --ei night_after_min 1 --ei night_level 0
+```
+
+- After `dim_after_min` without a touch the backlight drops to `dim_level` (0-255; `0` minutes
+  turns the daytime dim off). Inside the `night` window (`off` for none) it drops to `night_level`
+  after `night_after_min`, under a black cover. The screen is never put to sleep, so Wi-Fi and the
+  page keep running.
+- The first touch on a dimmed screen only wakes it; the page does not see that gesture.
+- Android clamps an app's window brightness to its settings minimum (30 on the MONOCUS BMY-106),
+  so lower levels are written to `/sys/class/backlight/<dev>/brightness` through `su`. While dimmed
+  or dark the level is checked every 5 s and re-applied if something reset it. Without `su` it dims
+  only to Android's minimum.
+- Leaving the dashboard (Settings, another app) restores Android's brightness.
+- `--ez dimmer false` turns it off. Host checks: `python3 kiosk/test-dimmer.py`.
+
+### What the page is told
+
+One way only, with no bridge: the page can't call the kiosk. On every change, on page load and when
+the night window opens or closes, the kiosk sets two attributes on `<html>` and fires an event:
+
+- `data-homehq-backlight`: `normal`, `dim` or `night`
+- `data-homehq-night`: `1` inside the configured night window, else `0`
+- `homehq:backlight` on `window`, with `detail` `{state, night, cause}`; `cause` is `timer`,
+  `touch`, `resume`, `leave`, `config` or `load`
+
+A page that isn't in this kiosk just never gets them. A dark night style, so a tap at 2 a.m. doesn't
+show a bright page, and leaving a resting screen when a touch wakes the frame:
+
+```css
+/* A static overlay: cheap on these GPUs, unlike a CSS filter over the whole page. */
+html[data-homehq-night="1"]::after {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 2147483647;
+  background: rgba(20, 8, 0, 0.6); /* dark amber */
+}
+```
+
+```js
+window.addEventListener('homehq:backlight', (e) => {
+  // The waking touch never reaches the page, so it can't reset the page's own idle timer.
+  if (e.detail.cause === 'touch') { /* reset your idle timer; leave an ambient or clock screen */ }
+});
+```
+
+Tested on one MONOCUS WF105T (RK3126, Android 6.0.1, `rk28_bl`): dim to 10 after idle, night to 0,
+tap wake from both, Settings restore and settings loading at boot. One full night
+(2026-11-24/25): 0 from 22:00:01 to 06:30:06 with no level re-applied, then dim to 10.
+
 ## Screen density
 
 The dashboard is laid out for 1280×800 at density 160. On wider screens, such as 1920×1080 frames,

@@ -71,6 +71,7 @@ public class Activity extends Context {
     str(PACKAGE / "Fakes.java"): """package com.wesbos.homehq;
 import java.util.*;
 class NavigationService { static boolean visible; static void setDashboardVisible(boolean v) { visible=v; }}
+class Dimmer { int resumes, pauses; void resume() { resumes++; } void pause() { pauses++; } }
 class WebView {
   boolean timersPaused, paused;
   void resumeTimers() { timersPaused=false; } void onResume() { paused=false; }
@@ -113,7 +114,7 @@ public class MainActivity extends Activity {
   static final String TAG="test", PORTAL_PROBE="http://probe.invalid/";
   static final long RETRY_MS=5000, STALL_MS=15000, PORTAL_CHECK_MS=5000, PORTAL_GIVE_UP_MS=600000;
   static final int PROBE_ONLINE=0, PROBE_PORTAL=1;
-  final Handler handler=new Handler(); final WebView web=new WebView();
+  final Handler handler=new Handler(); final WebView web=new WebView(); final Dimmer dimmer=new Dimmer();
   final View offline=new View(this);
   final Label portalText=new Label(), offlineTitle=new Label(), offlineText=new Label();
   final Runnable portalCheck=this::checkPortal;
