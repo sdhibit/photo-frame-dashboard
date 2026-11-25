@@ -1,0 +1,26 @@
+# Local toolchain for this checkout (not part of upstream).
+# First run:  mise install && mise run sdk
+[tools]
+java = "temurin-17"   # dashboard/kiosk/build.sh expects JDK 17
+node = "26"           # dashboard/ (Vite 8, Wrangler)
+# Google cmdline-tools (sdkmanager); sets ANDROID_HOME, puts adb on PATH. Held at 22.0: in 23.0
+# sdkmanager is a wrapper for the new `android` CLI, which uploads usage metrics.
+android-sdk = "22.0"
+
+[tasks.sdk]
+description = "Install adb, build-tools 35.0.0 and platform 34 into ANDROID_HOME"
+run = [
+  "yes | sdkmanager --licenses > /dev/null",
+  "sdkmanager 'platform-tools' 'build-tools;35.0.0' 'platforms;android-34'",
+]
+
+[tasks."kiosk:test"]
+description = "Host-only Home HQ regression checks (no frame needed)"
+dir = "dashboard"
+run = ["python3 kiosk/test-navigation.py", "python3 kiosk/test-lifecycle.py", "python3 kiosk/test-dimmer.py"]
+
+[tasks."kiosk:build"]
+description = "Build dashboard/kiosk/build/homehq.apk"
+dir = "dashboard"
+# build-tools 35.0.0: the version used on the sibling SKYZOO BMY-107 (34's d8 can crash on newer JDKs)
+run = 'BUILD_TOOLS="$ANDROID_HOME/build-tools/35.0.0" bash kiosk/build.sh'
